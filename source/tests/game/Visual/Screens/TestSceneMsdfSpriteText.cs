@@ -56,12 +56,52 @@ public partial class TestSceneMsdfSpriteText : MsdfTestScene
             },
             new ComparisonColumn(
                 "MsdfSpriteText (com MSDF)",
-                new MsdfSpriteText
+                new FillFlowContainer
                 {
+                    AutoSizeAxes = Axes.Both,
+                    Direction = FillDirection.Vertical,
                     Anchor = Anchor.Centre,
                     Origin = Anchor.Centre,
-                    Text = demo_text,
-                    FontSize = demo_font_size,
+                    Spacing = new Vector2(0, 16),
+                    Children = new Drawable[]
+                    {
+                        new MsdfSpriteText
+                        {
+                            Anchor = Anchor.TopCentre,
+                            Origin = Anchor.TopCentre,
+                            Text = demo_text,
+                            Font = MsdfFont.Inter.With(size: demo_font_size),
+                        },
+                        new MsdfSpriteText
+                        {
+                            Anchor = Anchor.TopCentre,
+                            Origin = Anchor.TopCentre,
+                            Text = "AllowMultiline: wraps at MaxWidth instead of overflowing",
+                            Font = MsdfFont.Inter.With(size: demo_font_size * 0.6f),
+                            AllowMultiline = true,
+                            Width = 220,
+                        },
+                        new MsdfSpriteText
+                        {
+                            Anchor = Anchor.TopCentre,
+                            Origin = Anchor.TopCentre,
+                            Text = "Truncate cuts long text down to fit",
+                            Font = MsdfFont.Inter.With(size: demo_font_size * 0.6f),
+                            Truncate = true,
+                            EllipsisString = "...",
+                            Width = 220,
+                        },
+                        new MsdfSpriteText
+                        {
+                            Anchor = Anchor.TopCentre,
+                            Origin = Anchor.TopCentre,
+                            Text = "Shadow",
+                            Font = MsdfFont.Inter.With(size: demo_font_size),
+                            Shadow = true,
+                            ShadowColour = new Color4(0, 0, 0, 0.6f),
+                            ShadowOffset = new Vector2(0, 0.12f),
+                        },
+                    },
                 },
                 zoom)
             {

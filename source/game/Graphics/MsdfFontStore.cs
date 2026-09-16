@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Msdf.Game.Resources;
 using osu.Framework.Graphics.Rendering;
 using osu.Framework.Graphics.Shaders;
 using osu.Framework.Graphics.Textures;
 using osu.Framework.IO.Stores;
+using osu.Framework.Text;
 
 namespace Msdf.Game.Graphics;
 
@@ -26,7 +28,7 @@ public readonly record struct MsdfGlyph(float Advance, RectangleF? PlaneBounds, 
 // directly (see planeBounds/atlasBounds usage in MsdfSpriteText). pxrange is read back from
 // atlas.distanceRange in the generated JSON and passed to sh_MsdfGlyph.fs as a uniform (see
 // DistanceRange/MsdfGlyphSprite), so it never needs to match a shader constant by convention.
-public sealed class MsdfFontStore : IDisposable
+public sealed class MsdfFontStore : IDisposable, ITexturedGlyphLookupStore
 {
     public Texture Atlas { get; }
 
@@ -94,6 +96,23 @@ public sealed class MsdfFontStore : IDisposable
 
         Kerning = kerning;
     }
+
+    // fontName is routed to this specific family/weight store already (see MsdfGlyphLookupStore)
+    // -- nothing left to validate against it here, only the character lookup matters.
+    ITexturedCharacterGlyph? ITexturedGlyphLookupStore.Get(string? fontName, char character)
+    {
+        if (!Glyphs.TryGetValue(character, out var glyph))
+        {
+            Logger.Log($"MsdfFontStore: no glyph for character '{character}' (U+{(int)character:X4}) in atlas -- skipping.", LoggingTarget.Runtime, LogLevel.Debug);
+            return null;
+        }
+
+        var texture = glyph.AtlasBounds is RectangleF atlasBounds ? Atlas.Crop(atlasBounds) : Atlas;
+        return new MsdfCharacterGlyph(this, character, glyph, texture);
+    }
+
+    Task<ITexturedCharacterGlyph?> ITexturedGlyphLookupStore.GetAsync(string fontName, char character)
+        => Task.FromResult(((ITexturedGlyphLookupStore)this).Get(fontName, character));
 
     // Reads only atlas.distanceRange from an msdf-atlas-gen JSON, for consumers that render
     // directly from a raw atlas without going through a full MsdfFontStore (e.g. the
