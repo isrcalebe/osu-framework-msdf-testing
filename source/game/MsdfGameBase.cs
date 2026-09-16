@@ -1,13 +1,16 @@
+using Msdf.Game.Configuration;
+using Msdf.Game.Graphics;
+using Msdf.Game.Resources;
 using osu.Framework.IO.Stores;
 using osu.Framework.Platform;
-using Msdf.Game.Configuration;
-using Msdf.Game.Resources;
 
 namespace Msdf.Game;
 
 public abstract partial class MsdfGameBase : osu.Framework.Game
 {
     private DependencyContainer? dependencies;
+
+    private MsdfFontStoreCache? msdfFontStoreCache;
 
     protected MsdfConfigManager? LocalConfig { get; private set; }
 
@@ -22,6 +25,14 @@ public abstract partial class MsdfGameBase : osu.Framework.Game
 
         dependencies?.CacheAs(Storage);
         dependencies?.CacheAs(LocalConfig);
+        dependencies?.CacheAs(msdfFontStoreCache = new MsdfFontStoreCache());
+    }
+
+    protected override void Dispose(bool isDisposing)
+    {
+        base.Dispose(isDisposing);
+
+        msdfFontStoreCache?.Dispose();
     }
 
     private void addFonts()

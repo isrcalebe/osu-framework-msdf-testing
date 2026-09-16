@@ -1,3 +1,4 @@
+using System;
 using Msdf.Game.Graphics;
 using Msdf.Game.Resources;
 using osu.Framework.Graphics.Containers;
@@ -37,14 +38,19 @@ public partial class TestSceneMsdfComparison : MsdfTestScene
     [BackgroundDependencyLoader]
     private void load(IRenderer renderer, ShaderManager shaders)
     {
+        var resources = new DllResourceStore(MsdfResourceAssemblyProvider.Assembly);
+
         msdfTextures = new TextureStore(
             renderer,
-            new TextureLoaderStore(new DllResourceStore(MsdfResourceAssemblyProvider.Assembly)),
+            new TextureLoaderStore(resources),
             useAtlas: false,
             filteringMode: TextureFilteringMode.Linear,
             manualMipmaps: true);
 
         var atlas = msdfTextures.Get(@"Textures/Msdf/msdf-test-atlas.png");
+
+        byte[] json = resources.Get(@"Textures/Msdf/msdf-test-atlas.json") ?? throw new InvalidOperationException("Could not find embedded resource 'Textures/Msdf/msdf-test-atlas.json'.");
+        float distanceRange = MsdfFontStore.ReadDistanceRange(json);
 
         var smoothShader = shaders.Load(VertexShaderDescriptor.TEXTURE_2, "MsdfGlyph");
         var hardThresholdShader = shaders.Load(VertexShaderDescriptor.TEXTURE_2, "MsdfGlyphHardThreshold");
@@ -56,14 +62,14 @@ public partial class TestSceneMsdfComparison : MsdfTestScene
                 RelativeSizeAxes = Axes.Both,
                 Colour = Color4.MidnightBlue,
             },
-            new ComparisonColumn("MSDF (fwidth antialiasing)", atlas, smoothShader, zoom)
+            new ComparisonColumn("MSDF (fwidth antialiasing)", atlas, smoothShader, distanceRange, zoom)
             {
                 RelativeSizeAxes = Axes.Both,
                 RelativePositionAxes = Axes.X,
                 Width = 0.5f,
                 Padding = new MarginPadding { Top = top_bar_height + 8 },
             },
-            new ComparisonColumn("Alpha-test bruto (threshold fixo, sem suavização)", atlas, hardThresholdShader, zoom)
+            new ComparisonColumn("Alpha-test bruto (threshold fixo, sem suavização)", atlas, hardThresholdShader, distanceRange, zoom)
             {
                 RelativeSizeAxes = Axes.Both,
                 RelativePositionAxes = Axes.X,
@@ -145,15 +151,17 @@ public partial class TestSceneMsdfComparison : MsdfTestScene
         private readonly string label;
         private readonly Texture atlas;
         private readonly IShader shader;
+        private readonly float distanceRange;
         private readonly Bindable<float> zoom;
 
         private Container glyphArea = null!;
 
-        public ComparisonColumn(string label, Texture atlas, IShader shader, Bindable<float> zoom)
+        public ComparisonColumn(string label, Texture atlas, IShader shader, float distanceRange, Bindable<float> zoom)
         {
             this.label = label;
             this.atlas = atlas;
             this.shader = shader;
+            this.distanceRange = distanceRange;
             this.zoom = zoom.GetBoundCopy();
         }
 
@@ -176,14 +184,14 @@ public partial class TestSceneMsdfComparison : MsdfTestScene
                     Origin = Anchor.Centre,
                     Children = new Drawable[]
                     {
-                        new MsdfSprite(atlas, shader)
+                        new MsdfGlyphSprite(atlas, shader, distanceRange)
                         {
                             Anchor = Anchor.Centre,
                             Origin = Anchor.Centre,
                             Position = new Vector2(0, -80),
                             Size = new Vector2(48),
                         },
-                        new MsdfSprite(atlas, shader)
+                        new MsdfGlyphSprite(atlas, shader, distanceRange)
                         {
                             Anchor = Anchor.Centre,
                             Origin = Anchor.Centre,
@@ -200,25 +208,6 @@ public partial class TestSceneMsdfComparison : MsdfTestScene
             base.LoadComplete();
 
             zoom.BindValueChanged(e => glyphArea.Scale = new Vector2(e.NewValue), true);
-        }
-    }
-
-    private partial class MsdfSprite : Sprite
-    {
-        private readonly Texture msdfTexture;
-        private readonly IShader msdfShader;
-
-        public MsdfSprite(Texture msdfTexture, IShader msdfShader)
-        {
-            this.msdfTexture = msdfTexture;
-            this.msdfShader = msdfShader;
-        }
-
-        [BackgroundDependencyLoader]
-        private void load()
-        {
-            Texture = msdfTexture;
-            TextureShader = msdfShader;
         }
     }
 }

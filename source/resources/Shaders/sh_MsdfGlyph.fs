@@ -7,16 +7,20 @@
 
 layout(location = 2) in mediump vec2 v_TexCoord;
 
-layout(set = 0, binding = 0) uniform lowp texture2D m_Texture;
-layout(set = 0, binding = 1) uniform lowp sampler m_Sampler;
+// distanceRange ("pxrange") passed to msdf-atlas-gen when generating the atlas being
+// sampled (see atlas.distanceRange in the accompanying .json). Bound per-draw as a
+// uniform rather than a shader constant because this shader is loaded once and reused
+// by every atlas that passes through it -- different families/atlases can legitimately
+// be generated with different -pxrange values.
+layout(std140, set = 0, binding = 0) uniform m_MsdfParameters
+{
+    mediump float g_DistanceRange;
+};
+
+layout(set = 1, binding = 0) uniform lowp texture2D m_Texture;
+layout(set = 1, binding = 1) uniform lowp sampler m_Sampler;
 
 layout(location = 0) out vec4 o_Colour;
-
-// distanceRange ("pxrange") passed to msdf-atlas-gen when generating the test atlas
-// (see Textures/Msdf/msdf-test-atlas.json and TestSceneMsdfGlyph for the exact command).
-// Hardcoded here for this proof of concept -- a real integration would source this from
-// the atlas metadata instead.
-#define MSDF_PX_RANGE 4.0
 
 // Reconstructs the signed distance from a multi-channel signed distance field texel.
 float medianOfThree(float r, float g, float b)
@@ -28,7 +32,7 @@ float medianOfThree(float r, float g, float b)
 // so the antialiasing width stays constant regardless of how much the glyph is scaled.
 float screenPxRange(vec2 texCoord)
 {
-    vec2 unitRange = vec2(MSDF_PX_RANGE) / vec2(textureSize(sampler2D(m_Texture, m_Sampler), 0));
+    vec2 unitRange = vec2(g_DistanceRange) / vec2(textureSize(sampler2D(m_Texture, m_Sampler), 0));
     vec2 screenTexSize = vec2(1.0) / fwidth(texCoord);
     return max(0.5 * dot(unitRange, screenTexSize), 1.0);
 }
